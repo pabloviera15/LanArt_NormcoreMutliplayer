@@ -29,19 +29,23 @@ namespace Normal.Realtime {
         private bool _mute = false;
         public  bool  mute { get { return _mute; } set { SetMute(value); } }
         
-        private bool                   _hasMicrophone { get { return (_oculusMicrophoneDevice != null || _nativeMicrophoneDevice != null || _unityMicrophoneDevice != null); } }
-        private OculusMicrophoneDevice _oculusMicrophoneDevice;
-        private Native.Microphone      _nativeMicrophoneDevice;
-        private MicrophoneDevice       _unityMicrophoneDevice;
-        private AudioDeviceDataReader  _unityMicrophoneDeviceDataReader;
-        private int                    _microphoneSampleRate;
-        private int                    _microphoneChannels;
-        private int                    _microphoneFrameSize;
-        private AudioInputStream       _microphoneStream;
+        private bool                  _hasMicrophone { get { return (_nativeMicrophoneDevice != null || _unityMicrophoneDevice != null); } }
+        private Native.Microphone     _nativeMicrophoneDevice;
+        private MicrophoneDevice      _unityMicrophoneDevice;
+        private AudioDeviceDataReader _unityMicrophoneDeviceDataReader;
+        private int                   _microphoneSampleRate;
+        private int                   _microphoneChannels;
+        private int                   _microphoneFrameSize;
+        private AudioInputStream      _microphoneStream;
 
         private AudioPreprocessor                 _audioPreprocessor;
         private AudioPreprocessorPlaybackListener _audioPreprocessorPlaybackListener;
         private float _microphoneDbLevel = -42.0f;
+
+#pragma warning disable 0649 // Disable variable is never assigned to warning.
+        [SerializeField]
+        private UnityEngine.Audio.AudioMixerGroup _audioMixerGroup;
+#pragma warning restore 0649
 
         private AudioOutput _audioOutput;
 
@@ -65,7 +69,7 @@ namespace Normal.Realtime {
             if (_hasMicrophone) {
                 averageDbSample = _microphoneDbLevel;
             } else if (_audioOutput != null) {
-                averageDbSample = _audioOutput._dbLevel;
+                averageDbSample = _audioOutput.dbLevel;
             }
 
             // These are arbitrary values I picked from my own testing.
@@ -115,22 +119,7 @@ namespace Normal.Realtime {
                 // First check if this platform supports our native microphone wrapper (lower latency + native echo cancellation if available)
                 _microphoneSampleRate = 48000;
                 _microphoneChannels   = 1;
-
-                // Check for Oculus native microphone device API
-                bool foundOculusMicrophoneDevice = false;
-                if (OculusMicrophoneDevice.IsOculusPlatformAvailable()) {
-                    foundOculusMicrophoneDevice = OculusMicrophoneDevice.IsOculusPlatformInitialized();
-                    if (!foundOculusMicrophoneDevice && Application.platform == RuntimePlatform.Android)
-                        Debug.LogWarning("Normcore: Oculus Platform SDK found, but it's not initialized. Oculus Quest native echo cancellation will be unavailable.");
-                }
-
-                if (foundOculusMicrophoneDevice) {
-                    // Create Oculus microphone device
-                    _oculusMicrophoneDevice = new OculusMicrophoneDevice();
-                    _oculusMicrophoneDevice.Start();
-                    _microphoneSampleRate = 48000;
-                    _microphoneChannels   = 1;
-                } else if (Native.Microphone.PlatformSupported()) {
+                if (Native.Microphone.PlatformSupported()) {
                     _nativeMicrophoneDevice = new Native.Microphone();
 
                     // If we failed to connect to the local microphone, bail.
@@ -200,6 +189,7 @@ namespace Normal.Realtime {
                     if (audioOutputStream != null) {
                         _audioOutput = gameObject.AddComponent<AudioOutput>();
                         _audioOutput.mute = mute;
+                        _audioOutput.audioMixerGroup = _audioMixerGroup;
                         _audioOutput.StartWithAudioOutputStream(audioOutputStream);
                     } else {
                         Debug.LogError("RealtimeAvatarVoice: Unable to find matching audio stream for avatar (clientID: " + clientID + ", streamID: " + streamID + ").");
@@ -226,11 +216,6 @@ namespace Normal.Realtime {
                 _microphoneStream.Close();
 
                 // Dispose microphone device
-                if (_oculusMicrophoneDevice != null) {
-                    _oculusMicrophoneDevice.Stop();
-                    _oculusMicrophoneDevice.Dispose();
-                    _oculusMicrophoneDevice = null;
-                }
                 if (_nativeMicrophoneDevice != null) {
                     _nativeMicrophoneDevice.Stop();
                     _nativeMicrophoneDevice.Dispose();
@@ -238,7 +223,7 @@ namespace Normal.Realtime {
                 }
                 if (_unityMicrophoneDevice != null) {
                     _unityMicrophoneDevice.Dispose();
-                    _unityMicrophoneDevice = null;
+                    _nativeMicrophoneDevice = null;
                 }
 
                 // Clean up
@@ -297,8 +282,6 @@ namespace Normal.Realtime {
         }
 
         private bool GetMicrophoneAudioData(float[] audioData) {
-            if (_oculusMicrophoneDevice != null)
-                return _oculusMicrophoneDevice.GetAudioData(audioData);
             if (_nativeMicrophoneDevice != null)
                 return _nativeMicrophoneDevice.GetAudioData(audioData);
             else if (_unityMicrophoneDeviceDataReader != null)

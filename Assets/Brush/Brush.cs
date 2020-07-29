@@ -1,25 +1,30 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR;
+using Normal.Realtime;
 
-public class Brush : MonoBehaviour
-{
+public class Brush : MonoBehaviour {
+    // Reference to Realtime to use to instantiate brush strokes
+    [SerializeField] private Realtime _realtime = null;
+
     // Prefab to instantiate when we draw a new brush stroke
-    [SerializeField] private GameObject _brushStrokePrefab;
+    [SerializeField] private GameObject _brushStrokePrefab = null;
 
     // Which hand should this brush instance track?
     private enum Hand { LeftHand, RightHand };
-    [SerializeField] private Hand _hand;
+    [SerializeField] private Hand _hand = Hand.RightHand;
 
     // Used to keep track of the current brush tip position and the actively drawing brush stroke
-    private Vector3 _handPosition;
-    private Quaternion _handRotation;
+    private Vector3     _handPosition;
+    private Quaternion  _handRotation;
     private BrushStroke _activeBrushStroke;
 
-    private void Update()
-    {
+    private void Update() {
+        if (!_realtime.connected)
+            return;
+
         // Start by figuring out which hand we're tracking
-        XRNode node = _hand == Hand.LeftHand ? XRNode.LeftHand : XRNode.RightHand;
+        XRNode node    = _hand == Hand.LeftHand ? XRNode.LeftHand : XRNode.RightHand;
         string trigger = _hand == Hand.LeftHand ? "Left Trigger" : "Right Trigger";
 
         // Get the position & rotation of the hand
@@ -33,10 +38,9 @@ public class Brush : MonoBehaviour
             triggerPressed = false;
 
         // If the trigger is pressed and we haven't created a new brush stroke to draw, create one!
-        if (triggerPressed && _activeBrushStroke == null)
-        {
-            // Instantiate a copy of the Brush Stroke prefab.
-            GameObject brushStrokeGameObject = Instantiate(_brushStrokePrefab);
+        if (triggerPressed && _activeBrushStroke == null) {
+            // Instantiate a copy of the Brush Stroke prefab, set it to be owned by us.
+            GameObject brushStrokeGameObject = Realtime.Instantiate(_brushStrokePrefab.name, ownedByClient: true, useInstance: _realtime);
 
             // Grab the BrushStroke component from it
             _activeBrushStroke = brushStrokeGameObject.GetComponent<BrushStroke>();
@@ -50,20 +54,16 @@ public class Brush : MonoBehaviour
             _activeBrushStroke.MoveBrushTipToPoint(_handPosition, _handRotation);
 
         // If the trigger is no longer pressed, and we still have an active brush stroke, mark it as finished and clear it.
-        if (!triggerPressed && _activeBrushStroke != null)
-        {
+        if (!triggerPressed && _activeBrushStroke != null) {
             _activeBrushStroke.EndBrushStrokeWithBrushTipPoint(_handPosition, _handRotation);
             _activeBrushStroke = null;
         }
     }
 
-    // ...
+    //// Utility
 
-
-//// Utility
-
-// Given an XRNode, get the current position & rotation. If it's not tracking, don't modify the position & rotation.
-private static bool UpdatePose(XRNode node, ref Vector3 position, ref Quaternion rotation) {
+    // Given an XRNode, get the current position & rotation. If it's not tracking, don't modify the position & rotation.
+    private static bool UpdatePose(XRNode node, ref Vector3 position, ref Quaternion rotation) {
         List<XRNodeState> nodeStates = new List<XRNodeState>();
         InputTracking.GetNodeStates(nodeStates);
 

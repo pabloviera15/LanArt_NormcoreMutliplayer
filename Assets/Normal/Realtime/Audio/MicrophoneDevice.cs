@@ -53,8 +53,6 @@ namespace Normal.Realtime {
         ~MicrophoneDevice() {
             if (sharedMicrophone == this)
                 sharedMicrophone = null;
-
-            Dispose(false);
         }
 
         // Ideally called whenever someone is done using a microphone device.
@@ -64,10 +62,8 @@ namespace Normal.Realtime {
         }
 
         void Dispose(bool disposing) {
-            if (_microphone != null) {
+            if (_microphone != null)
                 Microphone.End(_deviceName);
-                _microphone = null;
-            }
         }
 
         public bool GetBufferData(float[] buffer, int offsetSamples) {

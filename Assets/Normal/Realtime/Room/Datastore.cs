@@ -25,8 +25,8 @@ namespace Normal.Realtime {
 
             // Set Up
             _roomModel = roomModel;
-            _sceneViewModels  = new RealtimeSet<RealtimeViewModel>();
-            _prefabViewModels = new RealtimeSet<RealtimeViewModel>();
+            _sceneViewModels = new RealtimeSet<RealtimeViewModel>();
+            _prefabViewModels    = new RealtimeSet<RealtimeViewModel>();
             _prefabViewModels.modelAdded   += PrefabViewModelAddedToSet;
             _prefabViewModels.modelRemoved += PrefabViewModelRemovedFromSet;
 

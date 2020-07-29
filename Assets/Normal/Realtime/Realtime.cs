@@ -456,10 +456,7 @@ namespace Normal.Realtime {
 
         private void DestroyRealtimeView(RealtimeView realtimeView) {
             if (_room == null) {
-                // Note: I commented this out, because if scene objects attempt to destroy realtime views inside of
-                //       OnDestroy, they'll fire after Realtime has already disconnected and destroyed the room.
-                //       Afaik, there's no way for them to detect that, so we fail silently here.
-                //Debug.LogError("Realtime: Unable to destroy RealtimeView because this Realtime instance is not associated with a room! Ignoring.");
+                Debug.LogError("Realtime: Unable to destroy RealtimeView because this Realtime instance is not associated with a room! Ignoring.");
                 return;
             }
 

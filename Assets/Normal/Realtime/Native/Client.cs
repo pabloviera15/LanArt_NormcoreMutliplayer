@@ -5,8 +5,8 @@ using Normal.Realtime.Native;
 namespace Normal.Realtime.Native {
     public class Client : IDisposable {
         //// Class
-        private static volatile int    __numberOfClients = 0;
-        private static readonly object __numberOfClientsLock = new Object();
+        private static int __numberOfClients = 0;
+        private static object __numberOfClientsLock = new Object();
         private static void SetUpNetworkStackIfNeeded() {
             lock (__numberOfClientsLock) {
                 if (__numberOfClients == 0)
@@ -88,10 +88,10 @@ namespace Normal.Realtime.Native {
 
                 // Prevents any further calls to the native plugin
                 _nativeClient = IntPtr.Zero;
-
-                // Tear down network stack if needed
-                TearDownNetworkStackIfNeeded();
             }
+
+            // Tear down network stack if needed
+            TearDownNetworkStackIfNeeded();
         }
 
         // Callbacks

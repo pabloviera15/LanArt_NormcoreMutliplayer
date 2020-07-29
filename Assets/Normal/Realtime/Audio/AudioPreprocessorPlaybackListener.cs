@@ -1,8 +1,8 @@
 ﻿using UnityEngine;
 
-namespace Normal.Realtime {
+namespace Normal.Realtime.Native {
     public class AudioPreprocessorPlaybackListener : MonoBehaviour {
-        public  Native.AudioPreprocessor audioPreprocessor;
+        public AudioPreprocessor audioPreprocessor;
         private bool didLogChannelWarning = false;
 
         void OnAudioFilterRead(float[] samples, int channels) {

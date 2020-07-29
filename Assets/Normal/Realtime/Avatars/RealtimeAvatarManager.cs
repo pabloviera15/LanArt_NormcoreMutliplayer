@@ -13,15 +13,9 @@ namespace Normal.Realtime {
         [SerializeField] private RealtimeAvatar.LocalPlayer _localPlayer;
 #pragma warning restore 0649
 
-        public GameObject localAvatarPrefab { get { return _localAvatarPrefab; } set { SetLocalAvatarPrefab(value); } }
-
-        public RealtimeAvatar                  localAvatar { get; private set; }
         public Dictionary<int, RealtimeAvatar> avatars     { get; private set; }
-        
-        public delegate void AvatarCreatedDestroyed(RealtimeAvatarManager avatarManager, RealtimeAvatar avatar, bool isLocalAvatar);
-        public event AvatarCreatedDestroyed avatarCreated;
-        public event AvatarCreatedDestroyed avatarDestroyed;
-        
+        public RealtimeAvatar                  localAvatar { get; private set; }
+
         private Realtime _realtime;
 
         void Awake() {
@@ -35,14 +29,12 @@ namespace Normal.Realtime {
         }
 
         private void OnEnable() {
-            // Create avatar if we're already connected
-            if (_realtime.connected)
-                CreateAvatarIfNeeded();
+            // This is just here so we get the enable/disable checkbox in the inspector.
         }
 
         private void OnDisable() {
-            // Destroy avatar if needed
-            DestroyAvatarIfNeeded();
+            // This is just here so we get the enable/disable checkbox in the inspector.
+            // TODO: Should we destroy the avatar when this component is disabled?
         }
 
         void OnDestroy() {
@@ -54,7 +46,22 @@ namespace Normal.Realtime {
                 return;
 
             // Create avatar
-            CreateAvatarIfNeeded();
+            if (_localAvatarPrefab == null) {
+                Debug.LogWarning("Realtime Avatars local avatar prefab is null. No avatar prefab will be instantiated for the local player.");
+                return;
+            }
+            GameObject avatarGameObject = Realtime.Instantiate(_localAvatarPrefab.name, true, true, true, _realtime);
+            if (avatarGameObject == null) {
+                Debug.LogError("RealtimeAvatarManager: Failed to instantiate RealtimeAvatar prefab for the local player.");
+                return;
+            }
+            localAvatar = avatarGameObject.GetComponent<RealtimeAvatar>();
+            if (avatarGameObject == null) {
+                Debug.LogError("RealtimeAvatarManager: Successfully instantiated avatar prefab, but could not find the RealtimeAvatar component.");
+                return;
+            }
+            localAvatar.localPlayer = _localPlayer;
+            localAvatar.deviceType = GetRealtimeAvatarDeviceTypeForLocalPlayer();
         }
 
         public static RealtimeAvatar.DeviceType GetRealtimeAvatarDeviceTypeForLocalPlayer() {
@@ -73,88 +80,13 @@ namespace Normal.Realtime {
                 Debug.LogError("RealtimeAvatar registered more than once for the same clientID (" + clientID + "). This is a bug!");
             }
             avatars[clientID] = avatar;
-            
-            // Fire event
-            if (avatarCreated != null) {
-                try {
-                    avatarCreated(this, avatar, clientID == _realtime.clientID);
-                } catch (System.Exception exception) {
-                    Debug.LogException(exception);
-                }
-            }
         }
 
         public void _UnregisterAvatar(RealtimeAvatar avatar) {
-            bool isLocalAvatar = false;
-            
             List<KeyValuePair<int, RealtimeAvatar>> matchingAvatars = avatars.Where(keyValuePair => keyValuePair.Value == avatar).ToList();
             foreach (KeyValuePair<int, RealtimeAvatar> matchingAvatar in matchingAvatars) {
-                int avatarClientID = matchingAvatar.Key;
-                avatars.Remove(avatarClientID);
-                
-                isLocalAvatar = isLocalAvatar || avatarClientID == _realtime.clientID;
+                avatars.Remove(matchingAvatar.Key);
             }
-            
-            // Fire event
-            if (avatarDestroyed != null) {
-                try {
-                    avatarDestroyed(this, avatar, isLocalAvatar);
-                } catch (System.Exception exception) {
-                    Debug.LogException(exception);
-                }
-            }
-        }
-        
-        private void SetLocalAvatarPrefab(GameObject localAvatarPrefab) {
-            if (localAvatarPrefab == _localAvatarPrefab)
-                return;
-            
-            _localAvatarPrefab = localAvatarPrefab;
-            
-            // Replace the existing avatar if we've already instantiated the old prefab.
-            if (localAvatar != null) {
-                DestroyAvatarIfNeeded();
-                CreateAvatarIfNeeded();
-            }
-        }
-        
-        public void CreateAvatarIfNeeded() {
-            if (!_realtime.connected) {
-                Debug.LogError("RealtimeAvatarManager: Unable to create avatar. Realtime is not connected to a room.");
-                return;
-            }
-
-            if (localAvatar != null)
-                return;
-
-            if (_localAvatarPrefab == null) {
-                Debug.LogWarning("Realtime Avatars local avatar prefab is null. No avatar prefab will be instantiated for the local player.");
-                return;
-            }
-
-            GameObject avatarGameObject = Realtime.Instantiate(_localAvatarPrefab.name, true, true, true, _realtime);
-            if (avatarGameObject == null) {
-                Debug.LogError("RealtimeAvatarManager: Failed to instantiate RealtimeAvatar prefab for the local player.");
-                return;
-            }
-
-            localAvatar = avatarGameObject.GetComponent<RealtimeAvatar>();
-            if (avatarGameObject == null) {
-                Debug.LogError("RealtimeAvatarManager: Successfully instantiated avatar prefab, but could not find the RealtimeAvatar component.");
-                return;
-            }
-
-            localAvatar.localPlayer = _localPlayer;
-            localAvatar.deviceType = GetRealtimeAvatarDeviceTypeForLocalPlayer();
-        }
-
-        public void DestroyAvatarIfNeeded() {
-            if (localAvatar == null)
-                return;
-
-            Realtime.Destroy(localAvatar.gameObject);
-
-            localAvatar = null;
         }
     }
 }
